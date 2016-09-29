@@ -8,12 +8,15 @@
 //to gain a better understanding as to how a shell functinos thus some things may be similar.
 //https://brennan.io/2015/01/16/write-a-shell-in-c/
 
+#include <unistd.h>
 #include <stdio.h>
 #include <sys/wait.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 //Thanks Andrejs Cainikovs for the ccolor stuff
 //SRC: http://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
@@ -74,7 +77,7 @@ void harambe_redirect(char **args, char output[64])
 		perror("Couldn't open the output file");
 		exit(0);
 	}
-	fflush(stdout);
+	//fflush(stdout);
 	dup2(fd1, STDOUT_FILENO);
 	close(fd1);
 }
@@ -102,7 +105,7 @@ char **build_args(char **args, char line[81])
 
 //Iterate through the loop to see if there is a shell command or a redirect.
 //SRC: http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
-void harambe_builtin(char **args, int *not_builtin, int *out, char *output)
+void harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 {
 	for (int i = 0; args[i] != '\0'; i++)
 	{
@@ -122,15 +125,22 @@ void harambe_builtin(char **args, int *not_builtin, int *out, char *output)
 		//sets the out flag to 1 and removes the > symbol from the args array
 		else if (strcmp(args[i], ">") == 0)
 		{
-			args[i] = NULL;
-			strcpy(output, args[i + 1]);
-			*out = 1;
+			if (args[i + 1] == NULL || strcmp(args[i + 1], " ") == 0)
+			{
+				printf("%s\n","Harambe needs a filename to name the file!");
+			}
+			else
+			{
+				args[i] = NULL;
+				strcpy(output, args[i + 1]);
+				*out = 1;
+			}	
 		}
 	}
 }
 
 //Whenver a system command is need a for is started otherwise do nothing.
-void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char *output, int *status)
+void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char output[50], int status)
 {
 	int pid;
 
@@ -169,9 +179,9 @@ void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char *
 //Builds the prompt whenever called
 char *harambe_build_prompt()
 {
-    int *cwd = get_current_dir_name();
+    char *cwd = get_current_dir_name();
     size_t sizex;
-	const char *user = getenv("USER");
+    const char *user = getenv("USER");
     char hostname[50];
     char *prompt;
 
@@ -186,7 +196,6 @@ char *harambe_build_prompt()
     if (gethostname(hostname, sizeof(hostname)) == -1)
     {
         fprintf(stderr, "%s\n", "Harambe could not find hostname!");
-        strcpy(hostname, NULL);
     }
     if (cwd == NULL)
     {
@@ -217,12 +226,11 @@ char *harambe_build_prompt()
 int main()
 {
 	int not_builtin = 1;
-	int child_pid;
 	char line[81];
 	char **args;
 	int status;
 	int out = 0;
-	char *output[50];
+	char output[50];
 	char *prompt;
     prompt = harambe_build_prompt();
 
@@ -235,7 +243,7 @@ int main()
 
 		args = build_args(args, line);
 		harambe_builtin(args, &not_builtin, &out, output);
-		harambe_fork(args,&not_builtin, &out, line, output, &status);
+		harambe_fork(args,&not_builtin, &out, line, output, status);
 
 		//Print prompt after everything has finished as will as rebuild in case directory was changed.
 		prompt = harambe_build_prompt();
