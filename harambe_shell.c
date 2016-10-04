@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <search.h>
 
 //Thanks Andrejs Cainikovs for the ccolor stuff
 //SRC: http://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
@@ -30,6 +31,75 @@
 
 //List of built in shell commands.
 char *builtin[] = {"cd","exit"};
+
+
+void create_file()
+{
+	FILE *file;
+
+	file = fopen(".eval.dat", "ab+");
+
+	fclose(file);
+
+	//close(file);
+
+}
+
+FILE *open_file()
+{
+	FILE *file;
+
+	file = fopen(".eval.dat", "r");
+
+	return file;
+}
+
+char *read_line(FILE *file)
+{
+	char *buff;
+	buff = (char *) malloc(266);
+
+	fgets(buff,266,(FILE* )file);
+
+	return buff;
+}
+
+void print_file()
+{
+	FILE *file;
+	file = open_file();
+
+	char *line;
+	line = (char *) malloc(266);	
+	line = read_line(file);
+	printf("%s\n",line);	
+	line = read_line(file);
+	printf("%s\n", line);
+	fclose(file);
+}
+
+void store_hash()
+{
+	ENTRY e, *ep;
+	int i = 0;
+	char *test[] = {"test","testing"};
+
+	hcreate(30);
+
+	e.data = (void *) i;
+	e.key = test[0];
+	e.data = (void *) i + 1;
+	e.key = test[1];	
+
+	ep = hsearch(e, ENTER);
+	ep = hsearch(e, FIND);
+	
+	printf("%s\n", e.key); 
+
+	hdestroy();
+
+
+}
 
 //If cd is left NULL then returns to home dir otherwise go to distination.
 int harambe_cd(char **args)
@@ -232,6 +302,10 @@ int main()
 	int out = 0;
 	char output[50];
 	char *prompt;
+
+	print_file();
+	store_hash();
+
     prompt = harambe_build_prompt();
 
     //max 80 tokens in line

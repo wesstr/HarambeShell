@@ -1,0 +1,12 @@
+bin
+dircolors.conf
+harambe
+harambe_shell
+harambe_shell.c
+harambe_shell.cbp
+harambe_shell.depend
+harambe_shell.layout
+makefile
+obj
+pyclewn-2.3.vmb
+test

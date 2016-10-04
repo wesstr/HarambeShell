@@ -1,9 +1,12 @@
 # depslib dependency file v1.0
-1475030947 source:/home/wes/Documents/harambe_shell/harambe_shell.c
+1475287758 source:/home/wes/Documents/harambe_shell/harambe_shell.c
+	<unistd.h>
 	<stdio.h>
 	<sys/wait.h>
-	<unistd.h>
 	<stdlib.h>
 	<string.h>
 	<errno.h>
+	<fcntl.h>
+	<sys/stat.h>
+	<sys/types.h>
 
