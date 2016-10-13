@@ -1,6 +1,11 @@
 //Discription: A very simple shell to to honor our dead friend harambe.
 //Shell features include "exit" to exit the shell, "cd "dir"<no args goes home>", redirect ">"
 //and system programs as well as there arguments.
+//New additions:
+//alias support
+//Piping support
+//System control
+//
 //Author: Wesley Strong
 //NetID:  wfs51
 //Date:   9/21/16
@@ -8,6 +13,7 @@
 //to gain a better understanding as to how a shell functinos thus some things may be similar.
 //https://brennan.io/2015/01/16/write-a-shell-in-c/
 
+//Declarations
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/wait.h>
@@ -32,73 +38,126 @@
 //List of built in shell commands.
 char *builtin[] = {"cd","exit"};
 
-
+//Creates a file ".alias.dat"
 void create_file()
 {
+	//Because im lazy i did not pass the name of the file here
 	FILE *file;
-
-	file = fopen(".eval.dat", "ab+");
-
+	file = fopen(".alias.dat", "ab+");
+	if (file == NULL)
+	{
+		printf("%s\n", "Weaning: Harambe could not create .alias.dat");
+	}
+	printf("Succfully created .alias.dat\n");
 	fclose(file);
-
-	//close(file);
-
 }
 
-FILE *open_file()
+//Opens ".alias.dat"
+FILE *open_file(FILE *file)
 {
-	FILE *file;
-
-	file = fopen(".eval.dat", "r");
-
+	file = fopen(".alias.dat", "r");
+	if (file == NULL)
+	{
+		printf("%s\n", "Warning: .alias.dat not found!");
+		printf("%s\n", "Harambe is attempting to create new file...");
+		create_file();
+		file = open_file(file);
+		return file;
+	}
 	return file;
 }
 
+//Reads a single line from a file that is passed to it and then returns the line
 char *read_line(FILE *file)
 {
 	char *buff;
 	buff = (char *) malloc(266);
-
-	fgets(buff,266,(FILE* )file);
-
+	
+	if (fgets(buff,266,file) == NULL){
+		printf("%s\n", "Error reading file!");
+		
+		return NULL;
+	}
 	return buff;
 }
 
-void print_file()
+//Gets number of lines in file and returns them
+//Src:
+int num_line_in_file(FILE *file)
 {
-	FILE *file;
-	file = open_file();
-
-	char *line;
-	line = (char *) malloc(266);	
-	line = read_line(file);
-	printf("%s\n",line);	
-	line = read_line(file);
-	printf("%s\n", line);
-	fclose(file);
+	int lines = 0;
+	char b;	
+	while(!feof(file))
+	{
+		b = fgetc(file);
+		if(b == '\n') {
+		lines++;
+		}
+	}
+	return lines;
 }
 
+//Gets all lines in a file the returns them
+char **get_file(int *lines)
+{
+	FILE *file;
+	char **args;
+	//Open file
+	file = open_file(file);
+	//Get lines in file
+	*lines = num_line_in_file(file);
+	//This is for that behavor thing below
+	file = open_file(file);
+	//allocate memory
+	args = (char **) malloc(80*sizeof(char *)); 
+
+	//Build array
+	for (int i = 0 ; i != *lines ; i++)	
+	{
+		args[i] = read_line(file);
+	}
+	//Having some very bizzare behivor here
+	//When file is closed the command prompt will contain random symbols in random places...
+	//fclose(file);
+	return args;
+}
+
+//Stores data in hash from .alias.dat file
 void store_hash()
 {
+	//Initalize varables for hash then allocate memory
 	ENTRY e, *ep;
-	int i = 0;
-	char *test[] = {"test","testing"};
-
-	hcreate(30);
-
-	e.data = (void *) i;
-	e.key = test[0];
-	e.data = (void *) i + 1;
-	e.key = test[1];	
-
-	ep = hsearch(e, ENTER);
-	ep = hsearch(e, FIND);
+	char **args;
+	int *lines = 0;
+	args = (char **) malloc(80*sizeof(char *));	
+	args = get_file(&lines);
+	char *token;
+	//create the hash table base on how many lines are in the file plus 2 incase something happens
+	hcreate(lines + 2);
 	
-	printf("%s\n", e.key); 
-
-	hdestroy();
-
-
+	//Build hash table and seprate out the key and data from file
+	//alias.dat sytax
+	//command=replace with
+	//EX
+	//ls=ls -a -l
+	//Note: No spaces at end of line as well as no extra lines
+	for (int j = 0 ; j != lines ; j++)
+	{
+		token = strtok(args[j],"=");
+		e.key = token;
+		token = strtok(NULL, "=");
+		token[strlen(token) - 1] = 0;
+		e.data = token;
+		ep = hsearch(e, ENTER);
+	}
+}
+//Searches the hash tabe for a match if non then returns NULL
+char *find_hash(char *to_find)
+{
+	ENTRY e, *ep = NULL;
+	e.key = to_find;
+	ep = hsearch(e, FIND);
+	return ep ? ep->data : NULL;
 }
 
 //If cd is left NULL then returns to home dir otherwise go to distination.
@@ -131,6 +190,7 @@ int harambe_cd(char **args)
 //Exits shell
 int harambe_exit(char **args)
 {
+	hdestroy();
 	exit(0);
 	return 0;
 }
@@ -150,6 +210,51 @@ void harambe_redirect(char **args, char output[64])
 	//fflush(stdout);
 	dup2(fd1, STDOUT_FILENO);
 	close(fd1);
+}
+
+//Rebuilds args if an alias was found in has
+char **alias(char **args)
+{
+	char *replace;
+	char *token;
+	char **to_replace;
+
+	//Not sure why malloc here
+	replace = malloc(300);
+	//I am sure here however...
+	to_replace = (char **) malloc(900*sizeof(char *));
+
+	//checks if alias was found 
+	if (find_hash(args[0]) != NULL ){
+		//cant rember why i did this...
+		strcpy(replace, find_hash(args[0]));
+		//rebuild form alis gotten from file
+		token = strtok(replace , " \n");
+		int i = 0;
+		to_replace[i++] = token;	
+
+		while ( (token = strtok(NULL, " \n")) != NULL )
+		{
+			to_replace[i++] = token;
+		}
+
+		int j = 0;
+
+		//If there were additional paremter, append them to the list
+		for (j = 1 ; args[j] != NULL ; j++)
+		{
+			to_replace[i++] = args[j];
+		}	
+
+		//Total number of tokens, then set end of file to NULL
+		j = j + i;
+		to_replace[j] = (char *) NULL;
+
+		return to_replace;
+	}
+	else {
+		return args;
+	}
 }
 
 //Builds the args variable to contain no spaces.
@@ -251,7 +356,7 @@ char *harambe_build_prompt()
 {
     char *cwd = get_current_dir_name();
     size_t sizex;
-    const char *user = getenv("USER");
+    char *user = getenv("USER");
     char hostname[50];
     char *prompt;
 
@@ -303,12 +408,10 @@ int main()
 	char output[50];
 	char *prompt;
 
-	print_file();
 	store_hash();
+    	prompt = harambe_build_prompt();
 
-    prompt = harambe_build_prompt();
-
-    //max 80 tokens in line
+    	//max 80 tokens in line
 	args = (char **) malloc(80*sizeof(char *));
 
 	//print inital prompt.
@@ -316,6 +419,7 @@ int main()
 	while (fgets(line, 80, stdin) != NULL) {
 
 		args = build_args(args, line);
+		args = alias(args);
 		harambe_builtin(args, &not_builtin, &out, output);
 		harambe_fork(args,&not_builtin, &out, line, output, status);
 
@@ -323,5 +427,7 @@ int main()
 		prompt = harambe_build_prompt();
         fprintf(stderr, "%s", prompt);
 	}
+	//Delete hash cleanin up :)
+	hdestroy();
 	exit(0);
 } //end main
