@@ -1,4 +1,3 @@
-ls=ls --color
-test=ls -a -l --color
 ll=ls -l --color
-la=ls -a --color
+la=ls -a --colo
+ls=ls --color

@@ -257,6 +257,23 @@ char **alias(char **args)
 	}
 }
 
+char *alias_insert(char **args)
+{
+	
+	FILE *file;
+	file = open_file(file);
+	char *to_be_added = malloc(800);
+
+	for (int i = 1 ; args[i] != NULL ; i++)
+	{
+		printf("test1\n");		
+		strcat(to_be_added, args[i]);
+		printf("test\n");
+		strcat(to_be_added, " ");
+		printf("%s\n", args[i]);
+	}
+}
+
 //Builds the args variable to contain no spaces.
 char **build_args(char **args, char line[81])
 {
@@ -270,7 +287,7 @@ char **build_args(char **args, char line[81])
 	args[i++] = token;  //build command array
 	while (token != NULL) //walk through other tokens
 	{
-	   // printf( " %s\n", token );
+	        printf( " %s\n", token );
 		token = strtok(NULL, separator);
 		args[i++] = token;   //and build command array
 	}
@@ -311,6 +328,10 @@ void harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 				*out = 1;
 			}	
 		}
+		else if (strcmp(args[0], "alias") == 0)
+		{
+			alias_insert(alias);
+		}
 	}
 }
 
@@ -336,7 +357,7 @@ void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char o
 			perror(args[0]);
 			//If the system doesnot have the command listed then the child cannot
 			//continue there fore this continues to execute and prints error.
-			fprintf(stderr, "ERROR harambe does not know what to do with child.\n");
+			fprintf(stderr, "ERROR: harambe does not know what to do with child.\n");
 			exit(1);
 		}
 		else
@@ -429,5 +450,7 @@ int main()
 	}
 	//Delete hash cleanin up :)
 	hdestroy();
+	//Have a nice day!
 	exit(0);
+
 } //end main
