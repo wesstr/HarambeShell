@@ -1,10 +1,10 @@
 //Discription: A very simple shell to to honor our dead friend harambe.
 //Shell features include "exit" to exit the shell, "cd "dir"<no args goes home>", redirect ">"
 //and system programs as well as there arguments.
-//New additions:
-//alias support
-//Piping support
-//System control
+//TO DO:
+//alias support (Not done)
+//Piping support (Not even started)
+//System control (Not even started)
 //
 //Author: Wesley Strong
 //NetID:  wfs51
@@ -67,15 +67,21 @@ FILE *open_file(FILE *file)
 	return file;
 }
 
+FILE *open_append(FILE *file)
+{
+	file = fopen( ".alias.dat", "a" );
+	return file;
+}
+
 //Reads a single line from a file that is passed to it and then returns the line
 char *read_line(FILE *file)
 {
 	char *buff;
 	buff = (char *) malloc(266);
-	
+
 	if (fgets(buff,266,file) == NULL){
 		printf("%s\n", "Error reading file!");
-		
+
 		return NULL;
 	}
 	return buff;
@@ -86,7 +92,7 @@ char *read_line(FILE *file)
 int num_line_in_file(FILE *file)
 {
 	int lines = 0;
-	char b;	
+	char b;
 	while(!feof(file))
 	{
 		b = fgetc(file);
@@ -109,10 +115,10 @@ char **get_file(int *lines)
 	//This is for that behavor thing below
 	file = open_file(file);
 	//allocate memory
-	args = (char **) malloc(80*sizeof(char *)); 
+	args = (char **) malloc(80*sizeof(char *));
 
 	//Build array
-	for (int i = 0 ; i != *lines ; i++)	
+	for (int i = 0 ; i != *lines ; i++)
 	{
 		args[i] = read_line(file);
 	}
@@ -129,12 +135,12 @@ void store_hash()
 	ENTRY e, *ep;
 	char **args;
 	int *lines = 0;
-	args = (char **) malloc(80*sizeof(char *));	
+	args = (char **) malloc(80*sizeof(char *));
 	args = get_file(&lines);
 	char *token;
 	//create the hash table base on how many lines are in the file plus 2 incase something happens
 	hcreate(lines + 2);
-	
+
 	//Build hash table and seprate out the key and data from file
 	//alias.dat sytax
 	//command=replace with
@@ -224,14 +230,14 @@ char **alias(char **args)
 	//I am sure here however...
 	to_replace = (char **) malloc(900*sizeof(char *));
 
-	//checks if alias was found 
+	//checks if alias was found
 	if (find_hash(args[0]) != NULL ){
 		//cant rember why i did this...
 		strcpy(replace, find_hash(args[0]));
 		//rebuild form alis gotten from file
 		token = strtok(replace , " \n");
 		int i = 0;
-		to_replace[i++] = token;	
+		to_replace[i++] = token;
 
 		while ( (token = strtok(NULL, " \n")) != NULL )
 		{
@@ -244,7 +250,7 @@ char **alias(char **args)
 		for (j = 1 ; args[j] != NULL ; j++)
 		{
 			to_replace[i++] = args[j];
-		}	
+		}
 
 		//Total number of tokens, then set end of file to NULL
 		j = j + i;
@@ -257,21 +263,22 @@ char **alias(char **args)
 	}
 }
 
-char *alias_insert(char **args)
+void alias_insert(char **args)
 {
-	
+
 	FILE *file;
-	file = open_file(file);
+	file = open_append(file);
 	char *to_be_added = malloc(800);
 
 	for (int i = 1 ; args[i] != NULL ; i++)
 	{
-		printf("test1\n");		
 		strcat(to_be_added, args[i]);
-		printf("test\n");
 		strcat(to_be_added, " ");
-		printf("%s\n", args[i]);
 	}
+	strcat(to_be_added, "\n");
+	fputs(to_be_added, file);
+	//printf("%s\n", to_be_added);
+	fclose(file);
 }
 
 //Builds the args variable to contain no spaces.
@@ -287,7 +294,6 @@ char **build_args(char **args, char line[81])
 	args[i++] = token;  //build command array
 	while (token != NULL) //walk through other tokens
 	{
-	        printf( " %s\n", token );
 		token = strtok(NULL, separator);
 		args[i++] = token;   //and build command array
 	}
@@ -297,7 +303,7 @@ char **build_args(char **args, char line[81])
 
 //Iterate through the loop to see if there is a shell command or a redirect.
 //SRC: http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
-void harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
+char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 {
 	for (int i = 0; args[i] != '\0'; i++)
 	{
@@ -326,13 +332,17 @@ void harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 				args[i] = NULL;
 				strcpy(output, args[i + 1]);
 				*out = 1;
-			}	
-		}
-		else if (strcmp(args[0], "alias") == 0)
-		{
-			alias_insert(alias);
+			}
 		}
 	}
+	if (strcmp(args[0], "alias") == 0)
+	{
+		alias_insert(args);
+		args = alias(args);
+		*not_builtin = 0;
+	}
+	return args;
+
 }
 
 //Whenver a system command is need a for is started otherwise do nothing.
@@ -441,7 +451,7 @@ int main()
 
 		args = build_args(args, line);
 		args = alias(args);
-		harambe_builtin(args, &not_builtin, &out, output);
+		args = harambe_builtin(args, &not_builtin, &out, output);
 		harambe_fork(args,&not_builtin, &out, line, output, status);
 
 		//Print prompt after everything has finished as will as rebuild in case directory was changed.

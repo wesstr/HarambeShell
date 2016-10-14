@@ -1,3 +1,4 @@
 ll=ls -l --color
 la=ls -a --colo
 ls=ls --color
+lla=ls -a -l -color 
