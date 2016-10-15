@@ -338,6 +338,7 @@ char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 	if (strcmp(args[0], "alias") == 0)
 	{
 		alias_insert(args);
+		//hdestroy();
 		args = alias(args);
 		*not_builtin = 0;
 	}
