@@ -1,0 +1,15 @@
+[0m[01;34mbin[0m
+dircolors.conf
+harambe
+[01;32mharambe_shell[0m
+harambe_shell.c
+harambe_shell.cbp
+harambe_shell.depend
+harambe_shell.layout
+makefile
+[01;34mobj[0m
+pyclewn-2.3.vmb
+README.md
+test1.txt
+test2.txt
+test.txt

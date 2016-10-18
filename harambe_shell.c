@@ -24,7 +24,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <search.h>
-
+#include <signal.h>
+#include <syslog.h>
 //Thanks Andrejs Cainikovs for the ccolor stuff
 //SRC: http://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -67,6 +68,7 @@ FILE *open_file(FILE *file)
 	return file;
 }
 
+//Opens file for appendings
 FILE *open_append(FILE *file)
 {
 	file = fopen( ".alias.dat", "a" );
@@ -206,16 +208,38 @@ int harambe_exit(char **args)
 //http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
 //http://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
 //Creates a new file and redirects the output stream into the file.
-void harambe_redirect(char **args, char output[64])
+void harambe_redirect(char **args, char output[64], int *out)
 {
 	int fd1;
-	if ((fd1 = creat(output, 0644)) < 0) {
-		perror("Couldn't open the output file");
-		exit(0);
+	
+	if (*out == 1)
+	{
+
+		if ((fd1 = creat(output, 0644)) < 0) {
+			perror("Couldn't open the output file\n");
+			exit(0);
+		}
+		dup2(fd1, STDOUT_FILENO);
+		close(fd1);
+	}
+	else if (*out == 3)
+	{
+		if((fd1 = open(output, 0644)) < 0)
+		{
+			perror("Could not open the file!\n");
+		}
+		dup2( fd1, STDIN_FILENO);
+	}
+	else if (*out == 2)
+	{
+		if((fd1 = open(output,O_WRONLY | O_APPEND)) < 0)
+		{
+			perror("Could not open file!\n");
+		}
+		dup2(fd1, STDOUT_FILENO);
 	}
 	//fflush(stdout);
-	dup2(fd1, STDOUT_FILENO);
-	close(fd1);
+
 }
 
 //Rebuilds args if an alias was found in has
@@ -305,7 +329,17 @@ char **build_args(char **args, char line[81])
 //SRC: http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
 char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 {
-	for (int i = 0; args[i] != '\0'; i++)
+	//A possible diffrent solution to searching the args array for builting commands
+//	for (int i = 0; args[i] != NULL; i++)
+//	{
+//		for (int j = 0; builtin[j] != NULL; j++)
+//		{
+//			if (strcmp(builtin[j], args[]))
+//		}
+//	}
+	int i;
+
+	for (i = 0; args[i] != '\0'; i++)
 	{
 		//printf("%s\n", args[i]);
 		if (strcmp(args[i], builtin[1]) == 0)
@@ -325,14 +359,40 @@ char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 		{
 			if (args[i + 1] == NULL || strcmp(args[i + 1], " ") == 0)
 			{
-				printf("%s\n","Harambe needs a filename to name the file!");
+				printf("%s\n","Harambe needs a filename to name the file or open one!");
 			}
 			else
 			{
+				//remove > from string
 				args[i] = NULL;
+				//move file name to output
 				strcpy(output, args[i + 1]);
 				*out = 1;
 			}
+		}
+		else if (strcmp(args[i], ">>") == 0)
+		{
+			//2 means append to end of file
+			args[i] = NULL;
+			strcpy(output, args[i + 1]);
+			*out = 2;
+		}
+		else if(strcmp(args[i], "<") == 0)
+		{
+			//input redirect
+			//3 meand input redirest
+			args[i] = NULL;
+			
+			strcpy(output, args[i + 1]);
+			*out = 3;
+		}
+		else if (strcmp(args[i], "|") == 0)
+		{
+			//piping
+			//4 meand pipe
+			args[i] = NULL;
+			strcpy(output, args[i + 1]);	
+			*out = 4;
 		}
 	}
 	if (strcmp(args[0], "alias") == 0)
@@ -342,6 +402,14 @@ char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 		args = alias(args);
 		*not_builtin = 0;
 	}
+
+	if (strcmp(args[i - 1], "&") == 0 )
+	{
+		*out = 5;
+		args[i - 1] = NULL;
+	}
+
+	
 	return args;
 
 }
@@ -349,7 +417,8 @@ char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 //Whenver a system command is need a for is started otherwise do nothing.
 void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char output[50], int status)
 {
-	int pid;
+	volatile pid_t pid;
+	pid_t sid;
 
 	if (*not_builtin)
 	{
@@ -360,10 +429,29 @@ void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char o
 		}
 		else if (pid == 0)
 		{
-			if (*out)
+			if (*out < 5)
 			{
-				harambe_redirect(args, output);
+				harambe_redirect(args, output, out);
+				
 			}
+
+			if (*out == 5)
+			{
+				sid = setsid();
+				if (sid == 0){
+					printf("Error creating deamon!\n");
+					return;
+				}
+				//Chage file creation permissions
+				umask(0);
+				//chage working directory
+				chdir("/");
+				//NULL all output and input 
+				freopen( "/dev/null", "r", stdin );
+				freopen( "/dev/null", "w", stdout );
+				freopen( "/dev/null", "w", stderr );
+			}
+			
 			execvp(args[0], args);
 			perror(args[0]);
 			//If the system doesnot have the command listed then the child cannot
@@ -373,8 +461,13 @@ void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char o
 		}
 		else
 		{
+			//If creating a daemon then dont need to wait...
+			if (*out == 5)
+				printf(" [ %d ] \n", pid);
+			//Anything else then harambe will have to wait till the child finishes
+			else
+				while (wait(&status) != pid);
 			*out = 0;
-			while (wait(&status) != pid);
 		}
 	}
 	else
@@ -430,6 +523,18 @@ char *harambe_build_prompt()
     return prompt;
 }
 
+//Calls main on ctrl + c
+void signal_handle(int pid)
+{
+	//Simply call main...
+	//I have no idea if this is the correct way to do this...
+	//May cause errors and process that are running in the backgroud...
+	//A more gracefull way of restarting the shell.
+	kill(pid, SIGKILL);
+	//May not be needed...
+	main();
+}
+
 int main()
 {
 	int not_builtin = 1;
@@ -439,6 +544,8 @@ int main()
 	int out = 0;
 	char output[50];
 	char *prompt;
+
+	signal(SIGINT, signal_handle);
 
 	store_hash();
     	prompt = harambe_build_prompt();
