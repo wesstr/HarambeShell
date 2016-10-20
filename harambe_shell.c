@@ -25,7 +25,7 @@
 #include <sys/types.h>
 #include <search.h>
 #include <signal.h>
-#include <syslog.h>
+#include <stdbool.h>
 //Thanks Andrejs Cainikovs for the ccolor stuff
 //SRC: http://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -108,7 +108,7 @@ int num_line_in_file(FILE *file)
 //Gets all lines in a file the returns them
 char **get_file(int *lines)
 {
-	FILE *file;
+	FILE *file = NULL;
 	char **args;
 	//Open file
 	file = open_file(file);
@@ -134,9 +134,9 @@ char **get_file(int *lines)
 void store_hash()
 {
 	//Initalize varables for hash then allocate memory
-	ENTRY e, *ep;
+	ENTRY e;
 	char **args;
-	int *lines = 0;
+	int lines = 0;
 	args = (char **) malloc(80*sizeof(char *));
 	args = get_file(&lines);
 	char *token;
@@ -156,7 +156,7 @@ void store_hash()
 		token = strtok(NULL, "=");
 		token[strlen(token) - 1] = 0;
 		e.data = token;
-		ep = hsearch(e, ENTER);
+		hsearch(e, ENTER);
 	}
 }
 //Searches the hash tabe for a match if non then returns NULL
@@ -208,35 +208,36 @@ int harambe_exit(char **args)
 //http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
 //http://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
 //Creates a new file and redirects the output stream into the file.
-void harambe_redirect(char **args, char output[64], int *out)
+void harambe_redirect(char **args, char **output, bool builtin_flags[5])
 {
-	int fd1;
-	
-	if (*out == 1)
+	int fd1,fd2,fd3;
+
+
+	if (builtin_flags[0])
 	{
 
-		if ((fd1 = creat(output, 0644)) < 0) {
+		if ((fd1 = open(output[0],O_RDWR | O_CREAT , 0666)) < 0) {
 			perror("Couldn't open the output file\n");
 			exit(0);
 		}
 		dup2(fd1, STDOUT_FILENO);
 		close(fd1);
 	}
-	else if (*out == 3)
+	if (builtin_flags[2])
 	{
-		if((fd1 = open(output, 0644)) < 0)
+		if((fd2 = open(output[2], 0644)) < 0)
 		{
 			perror("Could not open the file!\n");
 		}
-		dup2( fd1, STDIN_FILENO);
+		dup2(fd2, STDIN_FILENO);
 	}
-	else if (*out == 2)
+	if (builtin_flags[1])
 	{
-		if((fd1 = open(output,O_WRONLY | O_APPEND)) < 0)
+		if((fd3 = open(output[1] ,O_WRONLY | O_APPEND)) < 0)
 		{
 			perror("Could not open file!\n");
 		}
-		dup2(fd1, STDOUT_FILENO);
+		dup2(fd3, STDOUT_FILENO);
 	}
 	//fflush(stdout);
 
@@ -290,7 +291,7 @@ char **alias(char **args)
 void alias_insert(char **args)
 {
 
-	FILE *file;
+	FILE *file = NULL;
 	file = open_append(file);
 	char *to_be_added = malloc(800);
 
@@ -325,9 +326,24 @@ char **build_args(char **args, char line[81])
 	return args;
 }
 
+//Print env varables
+//Src:http://stackoverflow.com/questions/2085302/printing-all-environment-variables-in-c-c
+void print_env(char **envp)
+{
+	char** env;
+
+	  for (env = envp; *env != 0; env++)
+	  {
+		      char* thisEnv = *env;
+		          printf("%s\n", thisEnv);
+
+	  }
+	    return;
+}
+
 //Iterate through the loop to see if there is a shell command or a redirect.
 //SRC: http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
-char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
+char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], char **output, char** envp)
 {
 	//A possible diffrent solution to searching the args array for builting commands
 //	for (int i = 0; args[i] != NULL; i++)
@@ -366,34 +382,38 @@ char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 				//remove > from string
 				args[i] = NULL;
 				//move file name to output
-				strcpy(output, args[i + 1]);
-				*out = 1;
+				output[0] = malloc(sizeof(args[i+ 1]));
+				strcpy(output[0], args[i + 1]);
+				builtin_flags[0] = true;
 			}
 		}
 		else if (strcmp(args[i], ">>") == 0)
 		{
 			//2 means append to end of file
 			args[i] = NULL;
-			strcpy(output, args[i + 1]);
-			*out = 2;
+			output[1] = malloc(sizeof(args[i+ 1]));
+			strcpy(output[1], args[i + 1]);
+			builtin_flags[1] =  true;
 		}
 		else if(strcmp(args[i], "<") == 0)
 		{
 			//input redirect
 			//3 meand input redirest
 			args[i] = NULL;
-			
-			strcpy(output, args[i + 1]);
-			*out = 3;
+			output[2] = malloc(sizeof(args[i+ 1]));
+			strcpy(output[2], args[i + 1]);
+			builtin_flags[2] = true;
 		}
 		else if (strcmp(args[i], "|") == 0)
 		{
 			//piping
 			//4 meand pipe
 			args[i] = NULL;
-			strcpy(output, args[i + 1]);	
-			*out = 4;
+			strcpy(output[4], args[i + 1]);
+			builtin_flags[3] = true;
+
 		}
+	//If alias is first element then add aliad to file and hash
 	}
 	if (strcmp(args[0], "alias") == 0)
 	{
@@ -403,22 +423,32 @@ char **harambe_builtin(char **args, int *not_builtin, int *out, char output[50])
 		*not_builtin = 0;
 	}
 
+	//If & is at end then set flag for backgroup process
 	if (strcmp(args[i - 1], "&") == 0 )
 	{
-		*out = 5;
+
+		builtin_flags[4] = true;
 		args[i - 1] = NULL;
 	}
 
-	
+	if (strcmp(args[0], "env") == 0)
+	{
+		printf("test\n");
+		print_env(envp);
+		*not_builtin = 0;
+	}
+
+
 	return args;
 
 }
 
 //Whenver a system command is need a for is started otherwise do nothing.
-void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char output[50], int status)
+void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char line[81], char **output)
 {
 	volatile pid_t pid;
-	pid_t sid;
+	//pid_t sid;
+	int status;
 
 	if (*not_builtin)
 	{
@@ -429,14 +459,13 @@ void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char o
 		}
 		else if (pid == 0)
 		{
-			if (*out < 5)
-			{
-				harambe_redirect(args, output, out);
-				
-			}
+			harambe_redirect(args, output, builtin_flags);
 
-			if (*out == 5)
+			if (builtin_flags[4])
 			{
+
+				//None of this was right...
+				/*
 				sid = setsid();
 				if (sid == 0){
 					printf("Error creating deamon!\n");
@@ -446,12 +475,13 @@ void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char o
 				umask(0);
 				//chage working directory
 				chdir("/");
-				//NULL all output and input 
+				//NULL all output and input
 				freopen( "/dev/null", "r", stdin );
 				freopen( "/dev/null", "w", stdout );
 				freopen( "/dev/null", "w", stderr );
+				*/
 			}
-			
+
 			execvp(args[0], args);
 			perror(args[0]);
 			//If the system doesnot have the command listed then the child cannot
@@ -461,15 +491,20 @@ void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char o
 		}
 		else
 		{
-			//If creating a daemon then dont need to wait...
-			if (*out == 5)
+			//If creating a  background process then dont need to wait...
+			if (builtin_flags[4]){
 				printf(" [ %d ] \n", pid);
+				//builtin_flags[4] = false;
+			}
 			//Anything else then harambe will have to wait till the child finishes
-			else
+			else{
 				while (wait(&status) != pid);
-			*out = 0;
+			}
+			for (int i = 0; i != 6; i++){
+				builtin_flags[i] = false;
+
 		}
-	}
+	}}
 	else
 	{
 		*not_builtin = 1;
@@ -479,11 +514,14 @@ void harambe_fork(char **args, int *not_builtin, int *out, char line[81], char o
 //Builds the prompt whenever called
 char *harambe_build_prompt()
 {
-    char *cwd = get_current_dir_name();
+    char *cwd;
     size_t sizex;
     char *user = getenv("USER");
     char hostname[50];
     char *prompt;
+
+    cwd = malloc(500);
+    cwd = getcwd(cwd, 500);
 
     //find last / and remote it
     cwd = 1 + strrchr(cwd,'/');
@@ -524,43 +562,101 @@ char *harambe_build_prompt()
 }
 
 //Calls main on ctrl + c
+int main(int argc, char **argv, char** envp);
 void signal_handle(int pid)
 {
-	//Simply call main...
+	//Simply call main?
 	//I have no idea if this is the correct way to do this...
 	//May cause errors and process that are running in the backgroud...
 	//A more gracefull way of restarting the shell.
 	kill(pid, SIGKILL);
 	//May not be needed...
-	main();
+	//But just in case something goes wrong in the shell
+
+	int main(int argc, char **argv, char** envp);
+}
+//Contains the history of the last 10 commands entered
+char **command_his;
+//Signal handle that creates a log file with the last 10 commands
+void log_file()
+{
+	FILE *file;
+	file = fopen("audit.log","w+");
+
+	for (int i = 9; command_his[i] != NULL && i != -1 ; i--)
+		fputs(command_his[i], file);
+	fclose(file);
+}
+//Stores last 10 commands if there more than 10 then it nulls the last then
+//Adds the latest to the first of the list
+//
+void command_his_store(int *count, char *line, char **command_his)
+{
+	if(*count == 0) {
+		for (int k = 9; k > 0; k--){   
+			command_his[k]=command_his[k-1];
+		}	
+		command_his[0] = malloc(sizeof(line));
+		strcpy(command_his[0], line);
+	}
+	else{
+		*count = *count -  1;		
+		command_his[*count] = malloc(sizeof(line));
+		strcpy(command_his[*count], line);
+			
+		//file = fopen("audit.log","a");
+		//fputs(line, file);
+	}
+
+	for (int i = 9; command_his[i] != NULL && i != -1 ; i--)
+		printf("%s", command_his[i]);
+	printf("test\n");
+
 }
 
-int main()
+
+
+int main(int argc, char **argv, char** envp)
 {
 	int not_builtin = 1;
-	char line[81];
 	char **args;
-	int status;
-	int out = 0;
-	char output[50];
+	//int out = 0;
+	char **output;
 	char *prompt;
+	bool builtin_flags[5] = {false,false,false,false,false};
+	char line[81];
+	int count = 10;
+	
+	//int background_jobs[2][];
+
+
+
+	//background_jobs[0] = 1;
+	//background_jobs[1] = 1000;
 
 	signal(SIGINT, signal_handle);
+	signal(SIGUSR1, log_file);
+	
 
 	store_hash();
     	prompt = harambe_build_prompt();
 
     	//max 80 tokens in line
 	args = (char **) malloc(80*sizeof(char *));
+	output = (char **) malloc(80*sizeof(char *));
+	command_his = (char **) malloc(81*sizeof(char *));
 
 	//print inital prompt.
 	fprintf(stderr, "%s", prompt);
 	while (fgets(line, 80, stdin) != NULL) {
 
+		command_his_store(&count, line, command_his);
+		kill(getpid(), SIGUSR1);
+
 		args = build_args(args, line);
 		args = alias(args);
-		args = harambe_builtin(args, &not_builtin, &out, output);
-		harambe_fork(args,&not_builtin, &out, line, output, status);
+		args = harambe_builtin(args, &not_builtin, builtin_flags, output, envp);
+		harambe_fork(args, &not_builtin, builtin_flags, line, output);
 
 		//Print prompt after everything has finished as will as rebuild in case directory was changed.
 		prompt = harambe_build_prompt();

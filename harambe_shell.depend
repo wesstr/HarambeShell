@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1476425318 source:/home/wes/Documents/harambe_shell/harambe_shell.c
+1476906608 source:/home/wes/Documents/harambe_shell/harambe_shell.c
 	<unistd.h>
 	<stdio.h>
 	<sys/wait.h>
@@ -10,4 +10,6 @@
 	<sys/stat.h>
 	<sys/types.h>
 	<search.h>
+	<signal.h>
+	<stdbool.h>
 
