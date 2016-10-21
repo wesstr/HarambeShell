@@ -341,9 +341,17 @@ void print_env(char **envp)
 	    return;
 }
 
+void print_jobs(int *jobs)
+{
+	for (int i = 0 ; jobs[i] != '\0' ; i++)
+	{
+		printf("%s%i%s%s%i\n","[",i,"]", " pid: ",jobs[i]);
+	}
+}
+
 //Iterate through the loop to see if there is a shell command or a redirect.
 //SRC: http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
-char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], char **output, char** envp)
+char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], char **output, char** envp, int *jobs)
 {
 	//A possible diffrent solution to searching the args array for builting commands
 //	for (int i = 0; args[i] != NULL; i++)
@@ -409,7 +417,7 @@ char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], cha
 			//piping
 			//4 meand pipe
 			args[i] = NULL;
-			strcpy(output[4], args[i + 1]);
+			//strcpy(output[4], args[i + 1]);
 			builtin_flags[3] = true;
 
 		}
@@ -426,80 +434,168 @@ char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], cha
 	//If & is at end then set flag for backgroup process
 	if (strcmp(args[i - 1], "&") == 0 )
 	{
-
 		builtin_flags[4] = true;
 		args[i - 1] = NULL;
 	}
 
+	//Print enverment variles
 	if (strcmp(args[0], "env") == 0)
 	{
-		printf("test\n");
 		print_env(envp);
 		*not_builtin = 0;
 	}
 
+	//Send process to background
+	if (strcmp(args[0], "bg") == 0){
+		builtin_flags[4] = true;
+		
+		*not_builtin = 0;
+	}
+
+	//Get process into forground
+	if (strcmp(args[0], "fg") == 0){
+		builtin_flags[4] = false;
+		*not_builtin = 0;
+	}
+
+	//Print jobs and there pid's
+	if (strcmp(args[0], "jobs") == 0){
+		print_jobs(jobs);
+		*not_builtin = 0;
+	}
 
 	return args;
 
 }
 
+pid_t pid, pid2;
 //Whenver a system command is need a for is started otherwise do nothing.
-void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char line[81], char **output)
+void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char line[81], char **output, int *jobs, int *job_count)
 {
-	volatile pid_t pid;
-	//pid_t sid;
-	int status;
+	//volatile pid_t pid, pid2;
+	pid_t sid;
+	int status, status2;
+	int pipe_disc[2];
+	char **pip_cmd_tmp;
+	pip_cmd_tmp = (char **) malloc(80*sizeof(char *));
+
+	//Checking to see if args is being menuplated correctley
+	//Build second varibale for that command	
+	if (builtin_flags[3])
+	{
+		status = pipe(pipe_disc);
+		
+		int i;
+		for (i = 0 ; args[i] != NULL ; i ++);
+		i++;
+		for (int j = 0 ; args[i] != NULL ; j++, i++){
+			//printf("%s\n", args[i]);
+			pip_cmd_tmp[j] = malloc(sizeof(args[i]));
+			strcpy(pip_cmd_tmp[j], args[i]);
+			//args[i] = NULL;
+		}
+		args[i++] = NULL;
+	}
+	
+
+	//Checking to see if args is being menuplated correctley
 
 	if (*not_builtin)
 	{
 		pid = fork();
+		//If fork fails
 		if (pid == -1)
 		{
 			fprintf(stderr, "ERROR harambe can't live!\n");
 		}
+		//Child
 		else if (pid == 0)
 		{
+			//For IO redirect
 			harambe_redirect(args, output, builtin_flags);
 
+			//For background processing
 			if (builtin_flags[4])
 			{
-
-				//None of this was right...
-				/*
 				sid = setsid();
-				if (sid == 0){
-					printf("Error creating deamon!\n");
-					return;
-				}
-				//Chage file creation permissions
-				umask(0);
-				//chage working directory
-				chdir("/");
-				//NULL all output and input
-				freopen( "/dev/null", "r", stdin );
-				freopen( "/dev/null", "w", stdout );
-				freopen( "/dev/null", "w", stderr );
-				*/
 			}
+
+			//If piping redired IO accordingley
+			if (builtin_flags[3])
+			{
+				dup2(pipe_disc[1],1);
+				close(pipe_disc[0]);
+				execvp(args[0], args);
+				perror(args[0]);
+
+				printf("1st child failed!\n");
+				fprintf(stderr, "ERROR1: harambe does not know what to do with child.\n");
+				exit(1);
+
+
+				
+			} else { 
 
 			execvp(args[0], args);
 			perror(args[0]);
+			}
+			
 			//If the system doesnot have the command listed then the child cannot
 			//continue there fore this continues to execute and prints error.
-			fprintf(stderr, "ERROR: harambe does not know what to do with child.\n");
+			printf("1st child failed!\n");
+			fprintf(stderr, "ERROR1: harambe does not know what to do with child.\n");
 			exit(1);
 		}
+		// PARENT HERE
 		else
 		{
 			//If creating a  background process then dont need to wait...
 			if (builtin_flags[4]){
 				printf(" [ %d ] \n", pid);
 				//builtin_flags[4] = false;
+				jobs[*job_count] = pid;
+				*job_count = *job_count + 1;
+				
 			}
 			//Anything else then harambe will have to wait till the child finishes
 			else{
-				while (wait(&status) != pid);
-			}
+				if (builtin_flags[3])
+				{
+					pid2 = fork();
+					if (pid2 == -1){
+						fprintf(stderr, "ERROR harambe can't live!\n");
+					} 
+
+					if (pid2 == 0)
+					{
+						dup2(pipe_disc[0], 0);
+						close(pipe_disc[1]);
+						//Execute process
+						execvp(pip_cmd_tmp[0], pip_cmd_tmp);
+						perror(pip_cmd_tmp[0]);
+			
+						//If the system doesnot have the command listed then the child cannot
+						//continue there fore this continues to execute and prints error.
+						printf("2nd child failed!\n");
+						fprintf(stderr, "ERROR: harambe does not know what to do with child.\n");
+						exit(1);
+					}
+					else {
+					close(pipe_disc[0]);
+					close(pipe_disc[1]);
+
+					while (wait(&status2) != pid2);
+					
+					}	
+				} else{
+					//close(pipe_disc[0]);
+					//close(pipe_disc[1]);
+					while (wait(&status) != pid);
+
+				
+
+			}}
+
 			for (int i = 0; i != 6; i++){
 				builtin_flags[i] = false;
 
@@ -563,20 +659,22 @@ char *harambe_build_prompt()
 
 //Calls main on ctrl + c
 int main(int argc, char **argv, char** envp);
-void signal_handle(int pid)
+void signal_handle()
 {
 	//Simply call main?
 	//I have no idea if this is the correct way to do this...
 	//May cause errors and process that are running in the backgroud...
 	//A more gracefull way of restarting the shell.
-	kill(pid, SIGKILL);
+	if ( pid != 0 )
+		kill(pid, SIGKILL);
 	//May not be needed...
 	//But just in case something goes wrong in the shell
 
-	int main(int argc, char **argv, char** envp);
 }
+
 //Contains the history of the last 10 commands entered
 char **command_his;
+int *jobs;
 //Signal handle that creates a log file with the last 10 commands
 void log_file()
 {
@@ -587,6 +685,20 @@ void log_file()
 		fputs(command_his[i], file);
 	fclose(file);
 }
+
+//No clue why this is not working...
+void pause_process()
+{
+	kill(pid, SIGSTOP);
+	printf("%s%i\n", "Stopped: ", pid);
+
+	for (int i = 0 ; jobs[i] != '\0' ; i++)
+	{
+		printf("%s%i%s%s%i\n","[",i,"]", " pid: ",jobs[i]);
+	}
+	
+}
+
 //Stores last 10 commands if there more than 10 then it nulls the last then
 //Adds the latest to the first of the list
 //
@@ -607,35 +719,25 @@ void command_his_store(int *count, char *line, char **command_his)
 		//file = fopen("audit.log","a");
 		//fputs(line, file);
 	}
-
-	for (int i = 9; command_his[i] != NULL && i != -1 ; i--)
-		printf("%s", command_his[i]);
-	printf("test\n");
-
 }
-
-
 
 int main(int argc, char **argv, char** envp)
 {
 	int not_builtin = 1;
 	char **args;
-	//int out = 0;
 	char **output;
 	char *prompt;
 	bool builtin_flags[5] = {false,false,false,false,false};
 	char line[81];
 	int count = 10;
+	//int *jobs;
+	int job_count;
 	
-	//int background_jobs[2][];
-
-
-
-	//background_jobs[0] = 1;
-	//background_jobs[1] = 1000;
 
 	signal(SIGINT, signal_handle);
 	signal(SIGUSR1, log_file);
+	signal(SIGTSTP,pause_process);
+	
 	
 
 	store_hash();
@@ -646,6 +748,8 @@ int main(int argc, char **argv, char** envp)
 	output = (char **) malloc(80*sizeof(char *));
 	command_his = (char **) malloc(81*sizeof(char *));
 
+	jobs = (int*) calloc(4, sizeof(int));
+
 	//print inital prompt.
 	fprintf(stderr, "%s", prompt);
 	while (fgets(line, 80, stdin) != NULL) {
@@ -655,8 +759,8 @@ int main(int argc, char **argv, char** envp)
 
 		args = build_args(args, line);
 		args = alias(args);
-		args = harambe_builtin(args, &not_builtin, builtin_flags, output, envp);
-		harambe_fork(args, &not_builtin, builtin_flags, line, output);
+		args = harambe_builtin(args, &not_builtin, builtin_flags, output, envp, jobs);
+		harambe_fork(args, &not_builtin, builtin_flags, line, output, jobs, &job_count);
 
 		//Print prompt after everything has finished as will as rebuild in case directory was changed.
 		prompt = harambe_build_prompt();
