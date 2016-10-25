@@ -1,16 +1,16 @@
-//Discription: A very simple shell to to honor our dead friend harambe.
+//Description: A very simple shell to honor our dead friend harambe.
 //Shell features include "exit" to exit the shell, "cd "dir"<no args goes home>", redirect ">"
 //and system programs as well as there arguments.
 //TO DO:
-//alias support (Not done)
-//Piping support (Not even started)
-//System control (Not even started)
+//alias support (Works kind of...)
+//Piping support (Single pipe only)
+//System control (Only a single background process)
 //
 //Author: Wesley Strong
 //NetID:  wfs51
 //Date:   9/21/16
-//Please not that no code was directley copied from this site however it was used
-//to gain a better understanding as to how a shell functinos thus some things may be similar.
+//Please not that no code was directly copied from this site however it was used
+//to gain a better understanding as to how a shell functions thus some things may be similar.
 //https://brennan.io/2015/01/16/write-a-shell-in-c/
 
 //Declarations
@@ -26,7 +26,7 @@
 #include <search.h>
 #include <signal.h>
 #include <stdbool.h>
-//Thanks Andrejs Cainikovs for the ccolor stuff
+//Thanks Andrejs Cainikovs for the color stuff
 //SRC: http://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -49,7 +49,7 @@ void create_file()
 	{
 		printf("%s\n", "Weaning: Harambe could not create .alias.dat");
 	}
-	printf("Succfully created .alias.dat\n");
+	printf("Successfully created .alias.dat\n");
 	fclose(file);
 }
 
@@ -68,7 +68,7 @@ FILE *open_file(FILE *file)
 	return file;
 }
 
-//Opens file for appendings
+//Opens file for appending
 FILE *open_append(FILE *file)
 {
 	file = fopen( ".alias.dat", "a" );
@@ -90,7 +90,7 @@ char *read_line(FILE *file)
 }
 
 //Gets number of lines in file and returns them
-//Src:
+//Src: cant remember if there was a source...
 int num_line_in_file(FILE *file)
 {
 	int lines = 0;
@@ -114,7 +114,7 @@ char **get_file(int *lines)
 	file = open_file(file);
 	//Get lines in file
 	*lines = num_line_in_file(file);
-	//This is for that behavor thing below
+	//This is for that behaver thing below
 	file = open_file(file);
 	//allocate memory
 	args = (char **) malloc(80*sizeof(char *));
@@ -124,7 +124,7 @@ char **get_file(int *lines)
 	{
 		args[i] = read_line(file);
 	}
-	//Having some very bizzare behivor here
+	//Having some very bizarre behavior here
 	//When file is closed the command prompt will contain random symbols in random places...
 	//fclose(file);
 	return args;
@@ -133,18 +133,18 @@ char **get_file(int *lines)
 //Stores data in hash from .alias.dat file
 void store_hash()
 {
-	//Initalize varables for hash then allocate memory
+	//Initialize variables for hash then allocate memory
 	ENTRY e;
 	char **args;
 	int lines = 0;
 	args = (char **) malloc(80*sizeof(char *));
 	args = get_file(&lines);
 	char *token;
-	//create the hash table base on how many lines are in the file plus 2 incase something happens
+	//create the hash table base on how many lines are in the file plus 2 encase something happens
 	hcreate(lines + 2);
 
-	//Build hash table and seprate out the key and data from file
-	//alias.dat sytax
+	//Build hash table and separate out the key and data from file
+	//alias.dat syntax
 	//command=replace with
 	//EX
 	//ls=ls -a -l
@@ -159,7 +159,7 @@ void store_hash()
 		hsearch(e, ENTER);
 	}
 }
-//Searches the hash tabe for a match if non then returns NULL
+//Searches the hash table for a match if non then returns NULL
 char *find_hash(char *to_find)
 {
 	ENTRY e, *ep = NULL;
@@ -168,19 +168,19 @@ char *find_hash(char *to_find)
 	return ep ? ep->data : NULL;
 }
 
-//If cd is left NULL then returns to home dir otherwise go to distination.
+//If cd is left NULL then returns to home dir otherwise go to destination.
 int harambe_cd(char **args)
 {
 	//Checks if NULL if true then go to home directory
 	if (args[1] == NULL)
 	{
-		//If there is no home directory rais error
+		//If there is no home directory otherwise error
 		if (chdir(getenv("HOME")) == -1)
 		{
-			fprintf(stderr, "%s\n", "ERROR: You dont have a home!");
+			fprintf(stderr, "%s\n", "ERROR: You don't have a home!");
 		}
 	}
-	//If that directory doesnt exest print this error
+	//If that directory doesn't exist print this error
 	else if (chdir(args[1]) == -1)
 	{
 		fprintf(stderr, "%s\n", "ERROR: harambe cant go there because that not a directory!");
@@ -188,7 +188,7 @@ int harambe_cd(char **args)
 	}
 	else
 	{
-		//All went well retun 1
+		//All went well return 1
 		return 1;
 	}
 	//Something failed return 0
@@ -203,7 +203,7 @@ int harambe_exit(char **args)
 	return 0;
 }
 
-//The contents of the function are a compinations of a few diffrent sources.
+//The contents of the function are a combinations of a few different sources.
 //SRC'S:
 //http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
 //http://stackoverflow.com/questions/8516823/redirecting-output-to-a-file-in-c
@@ -239,8 +239,6 @@ void harambe_redirect(char **args, char **output, bool builtin_flags[5])
 		}
 		dup2(fd3, STDOUT_FILENO);
 	}
-	//fflush(stdout);
-
 }
 
 //Rebuilds args if an alias was found in has
@@ -257,7 +255,7 @@ char **alias(char **args)
 
 	//checks if alias was found
 	if (find_hash(args[0]) != NULL ){
-		//cant rember why i did this...
+		//cant remember why i did this...
 		strcpy(replace, find_hash(args[0]));
 		//rebuild form alis gotten from file
 		token = strtok(replace , " \n");
@@ -271,7 +269,7 @@ char **alias(char **args)
 
 		int j = 0;
 
-		//If there were additional paremter, append them to the list
+		//If there were additional parameter, Append them to the list
 		for (j = 1 ; args[j] != NULL ; j++)
 		{
 			to_replace[i++] = args[j];
@@ -288,6 +286,7 @@ char **alias(char **args)
 	}
 }
 
+//Inserts new alias into the file
 void alias_insert(char **args)
 {
 
@@ -302,7 +301,6 @@ void alias_insert(char **args)
 	}
 	strcat(to_be_added, "\n");
 	fputs(to_be_added, file);
-	//printf("%s\n", to_be_added);
 	fclose(file);
 }
 
@@ -324,10 +322,9 @@ char **build_args(char **args, char line[81])
 	}
 	args[i] = (char *) NULL;
 	return args;
+///Src:http://stackoverflow.com/questions/2085302/printing-all-environment-variables-in-c-c
 }
 
-//Print env varables
-//Src:http://stackoverflow.com/questions/2085302/printing-all-environment-variables-in-c-c
 void print_env(char **envp)
 {
 	char** env;
@@ -341,6 +338,8 @@ void print_env(char **envp)
 	    return;
 }
 
+//This was an attempt to try and implement job processing... 
+//DOES NOT WORK!!
 void print_jobs(int *jobs)
 {
 	for (int i = 0 ; jobs[i] != '\0' ; i++)
@@ -351,9 +350,10 @@ void print_jobs(int *jobs)
 
 //Iterate through the loop to see if there is a shell command or a redirect.
 //SRC: http://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
-char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], char **output, char** envp, int *jobs)
+//WARNING OPEN THIS FOLD AT YOUR OWN RISK!!!
+char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], char **output, char** envp, int *jobs, int *pip_count)
 {
-	//A possible diffrent solution to searching the args array for builting commands
+	//A possible different solution to searching the args array for building commands
 //	for (int i = 0; args[i] != NULL; i++)
 //	{
 //		for (int j = 0; builtin[j] != NULL; j++)
@@ -371,8 +371,8 @@ char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], cha
 			*not_builtin = 0;
 			harambe_exit(args);
 		}
-		//Had problems with this running eather iteration of args?
-		//Im stupid i wasnet accessing the array at the i'th element
+		//Had problems with this running either iteration of args?
+		//I'm stupid I wasn't accessing the array at the i'th element
 		else if (strcmp(args[i], builtin[0]) == 0)
 		{
 			*not_builtin = 0;
@@ -406,22 +406,22 @@ char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], cha
 		else if(strcmp(args[i], "<") == 0)
 		{
 			//input redirect
-			//3 meand input redirest
+			//3 meand input redirect
 			args[i] = NULL;
 			output[2] = malloc(sizeof(args[i+ 1]));
 			strcpy(output[2], args[i + 1]);
 			builtin_flags[2] = true;
 		}
+
+		//PIPING WOOO!!!
 		else if (strcmp(args[i], "|") == 0)
 		{
-			//piping
-			//4 meand pipe
 			args[i] = NULL;
-			//strcpy(output[4], args[i + 1]);
 			builtin_flags[3] = true;
+			*pip_count = *pip_count + 1;
 
 		}
-	//If alias is first element then add aliad to file and hash
+	//If something is first element raise flags 
 	}
 	if (strcmp(args[0], "alias") == 0)
 	{
@@ -431,34 +431,34 @@ char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], cha
 		*not_builtin = 0;
 	}
 
-	//If & is at end then set flag for backgroup process
+	//If & is at end then set flag for back group process
 	if (strcmp(args[i - 1], "&") == 0 )
 	{
 		builtin_flags[4] = true;
 		args[i - 1] = NULL;
 	}
 
-	//Print enverment variles
+	//Print environment variables
 	if (strcmp(args[0], "env") == 0)
 	{
 		print_env(envp);
 		*not_builtin = 0;
 	}
 
-	//Send process to background
+	//Send process to background (Not working!)
 	if (strcmp(args[0], "bg") == 0){
 		builtin_flags[4] = true;
 		
 		*not_builtin = 0;
 	}
 
-	//Get process into forground
+	//Get process into foreground (Not working!)
 	if (strcmp(args[0], "fg") == 0){
 		builtin_flags[4] = false;
 		*not_builtin = 0;
 	}
 
-	//Print jobs and there pid's
+	//Print jobs and there pid's (Not working!)
 	if (strcmp(args[0], "jobs") == 0){
 		print_jobs(jobs);
 		*not_builtin = 0;
@@ -469,37 +469,49 @@ char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], cha
 }
 
 pid_t pid, pid2;
-//Whenver a system command is need a for is started otherwise do nothing.
-void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char line[81], char **output, int *jobs, int *job_count)
+//Whenever a system command is need a for is started otherwise do nothing.
+void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char line[81], char **output, int *jobs, int *job_count, int* pipe_count)
 {
-	//volatile pid_t pid, pid2;
 	pid_t sid;
 	int status, status2;
 	int pipe_disc[2];
-	char **pip_cmd_tmp;
-	pip_cmd_tmp = (char **) malloc(80*sizeof(char *));
+	char ***pipe_cmds;
+	//Allocate memory first elements of array
+	pipe_cmds = malloc(sizeof(char *));
+	//pip_cmd_tmp = (char **) malloc(80*sizeof(char *));
+	int k;
+	int i = 0;
 
-	//Checking to see if args is being menuplated correctley
-	//Build second varibale for that command	
+	//If pipe has been entered the need to build an additional args
 	if (builtin_flags[3])
 	{
-		status = pipe(pipe_disc);
-		
-		int i;
-		for (i = 0 ; args[i] != NULL ; i ++);
-		i++;
-		for (int j = 0 ; args[i] != NULL ; j++, i++){
-			//printf("%s\n", args[i]);
-			pip_cmd_tmp[j] = malloc(sizeof(args[i]));
-			strcpy(pip_cmd_tmp[j], args[i]);
-			//args[i] = NULL;
+		while ( k != (*pipe_count = *pipe_count + 1 )){
+			//pipe() is not right here need to fix...
+			status = pipe(pipe_disc);
+			//Allocate memory for that pipe cmd and its args
+			pipe_cmds[k] = (char **) malloc(80*sizeof(char *));
+			
+			//Separate out commands into array
+			//Get to first NULL in cmd
+			for (;args[i] != NULL ; i ++);
+			i++;
+			//Now add them to the array
+			int j;
+			for (j = 0 ; args[i] != NULL ; j++, i++){
+				pipe_cmds[k][j] = malloc(sizeof(args[i]));
+				strcpy(pipe_cmds[k][j], args[i]);
+			}
+			pipe_cmds[k][j++] = (char *) NULL;
+
+			if ( k != (*pipe_count = *pipe_count + 1 )){
+				//Not at the end yet got to go up 1
+				i++;
+			}
+			//args[i++] = NULL;
+			k++;
 		}
-		args[i++] = NULL;
 	}
 	
-
-	//Checking to see if args is being menuplated correctley
-
 	if (*not_builtin)
 	{
 		pid = fork();
@@ -508,7 +520,7 @@ void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char lin
 		{
 			fprintf(stderr, "ERROR harambe can't live!\n");
 		}
-		//Child
+		// FIRST CHILD HERE
 		else if (pid == 0)
 		{
 			//For IO redirect
@@ -520,7 +532,7 @@ void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char lin
 				sid = setsid();
 			}
 
-			//If piping redired IO accordingley
+			//If piping redirect IO accordingly
 			if (builtin_flags[3])
 			{
 				dup2(pipe_disc[1],1);
@@ -536,6 +548,7 @@ void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char lin
 				
 			} else { 
 
+			//Execute normally if no flags etc
 			execvp(args[0], args);
 			perror(args[0]);
 			}
@@ -546,19 +559,20 @@ void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char lin
 			fprintf(stderr, "ERROR1: harambe does not know what to do with child.\n");
 			exit(1);
 		}
-		// PARENT HERE
+		// PARENT HERE STUPID!
 		else
 		{
-			//If creating a  background process then dont need to wait...
+			//If creating a  background process then don't need to wait...
 			if (builtin_flags[4]){
 				printf(" [ %d ] \n", pid);
-				//builtin_flags[4] = false;
 				jobs[*job_count] = pid;
 				*job_count = *job_count + 1;
 				
 			}
 			//Anything else then harambe will have to wait till the child finishes
 			else{
+				//SECOND CHILD HERE
+				//If pipe then need to make other for and redirect IO accordingly
 				if (builtin_flags[3])
 				{
 					pid2 = fork();
@@ -568,41 +582,43 @@ void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char lin
 
 					if (pid2 == 0)
 					{
+						//Do IO redirecting and execute
 						dup2(pipe_disc[0], 0);
 						close(pipe_disc[1]);
 						//Execute process
 						execvp(pip_cmd_tmp[0], pip_cmd_tmp);
 						perror(pip_cmd_tmp[0]);
 			
-						//If the system doesnot have the command listed then the child cannot
+						//If the system doesn't have the command listed then the child cannot
 						//continue there fore this continues to execute and prints error.
 						printf("2nd child failed!\n");
 						fprintf(stderr, "ERROR: harambe does not know what to do with child.\n");
 						exit(1);
 					}
 					else {
+					//Close everything from piping
 					close(pipe_disc[0]);
 					close(pipe_disc[1]);
-
+					//wait for second child to finish
 					while (wait(&status2) != pid2);
 					
 					}	
-				} else{
-					//close(pipe_disc[0]);
-					//close(pipe_disc[1]);
+				} else {
+					//Wait for first child to finish
 					while (wait(&status) != pid);
 
 				
-
-			}}
-
+				}
+			}
+			//Change all flags to false because we are done!
 			for (int i = 0; i != 6; i++){
 				builtin_flags[i] = false;
-
+			}
 		}
-	}}
+	}
 	else
 	{
+		//Child does not change memory in parent stupid!
 		*not_builtin = 1;
 	}
 }
@@ -619,7 +635,7 @@ char *harambe_build_prompt()
     cwd = malloc(500);
     cwd = getcwd(cwd, 500);
 
-    //find last / and remote it
+    //find last / and remove it
     cwd = 1 + strrchr(cwd,'/');
 
     //allocate memory for prompt
@@ -637,7 +653,7 @@ char *harambe_build_prompt()
     }
     if(user == NULL)
     {
-        fprintf(stderr, "%s\n", "Harambe does not know who s using this computer!");
+        fprintf(stderr, "%s\n", "Harambe does not know who is using this computer!");
     }
 
     //Build prompt
@@ -657,14 +673,14 @@ char *harambe_build_prompt()
     return prompt;
 }
 
-//Calls main on ctrl + c
+//ctrl + c signal function
 int main(int argc, char **argv, char** envp);
 void signal_handle()
 {
 	//Simply call main?
 	//I have no idea if this is the correct way to do this...
-	//May cause errors and process that are running in the backgroud...
-	//A more gracefull way of restarting the shell.
+	//May cause errors and process that are running in the background...
+	//A more graceful way of restarting the shell.
 	if ( pid != 0 )
 		kill(pid, SIGKILL);
 	//May not be needed...
@@ -676,6 +692,7 @@ void signal_handle()
 char **command_his;
 int *jobs;
 //Signal handle that creates a log file with the last 10 commands
+//Every time a command is entered
 void log_file()
 {
 	FILE *file;
@@ -687,6 +704,7 @@ void log_file()
 }
 
 //No clue why this is not working...
+//Ctrl + z signal function
 void pause_process()
 {
 	kill(pid, SIGSTOP);
@@ -696,7 +714,6 @@ void pause_process()
 	{
 		printf("%s%i%s%s%i\n","[",i,"]", " pid: ",jobs[i]);
 	}
-	
 }
 
 //Stores last 10 commands if there more than 10 then it nulls the last then
@@ -715,12 +732,10 @@ void command_his_store(int *count, char *line, char **command_his)
 		*count = *count -  1;		
 		command_his[*count] = malloc(sizeof(line));
 		strcpy(command_his[*count], line);
-			
-		//file = fopen("audit.log","a");
-		//fputs(line, file);
 	}
 }
 
+//If you don't know what main is then you shouldn't be looking at this code...
 int main(int argc, char **argv, char** envp)
 {
 	int not_builtin = 1;
@@ -730,17 +745,19 @@ int main(int argc, char **argv, char** envp)
 	bool builtin_flags[5] = {false,false,false,false,false};
 	char line[81];
 	int count = 10;
-	//int *jobs;
+	int pip_count = 0;
 	int job_count;
 	
-
+	//Ctrl + c signal
 	signal(SIGINT, signal_handle);
+	//USR1 signal
 	signal(SIGUSR1, log_file);
+	//Ctrl + z signal (does not work)
 	signal(SIGTSTP,pause_process);
-	
-	
 
+	//Store alias to hash from file.
 	store_hash();
+	//Build prompt
     	prompt = harambe_build_prompt();
 
     	//max 80 tokens in line
@@ -750,23 +767,25 @@ int main(int argc, char **argv, char** envp)
 
 	jobs = (int*) calloc(4, sizeof(int));
 
-	//print inital prompt.
+	//print initial prompt.
 	fprintf(stderr, "%s", prompt);
 	while (fgets(line, 80, stdin) != NULL) {
 
+		//Store command entered
 		command_his_store(&count, line, command_his);
+		//Call USR1 signal
 		kill(getpid(), SIGUSR1);
 
 		args = build_args(args, line);
 		args = alias(args);
-		args = harambe_builtin(args, &not_builtin, builtin_flags, output, envp, jobs);
-		harambe_fork(args, &not_builtin, builtin_flags, line, output, jobs, &job_count);
+		args = harambe_builtin(args, &not_builtin, builtin_flags, output, envp, jobs, &pip_count);
+		harambe_fork(args, &not_builtin, builtin_flags, line, output, jobs, &job_count, &pip_count);
 
 		//Print prompt after everything has finished as will as rebuild in case directory was changed.
 		prompt = harambe_build_prompt();
         fprintf(stderr, "%s", prompt);
 	}
-	//Delete hash cleanin up :)
+	//Delete hash cleaning up :)
 	hdestroy();
 	//Have a nice day!
 	exit(0);
