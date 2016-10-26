@@ -7,8 +7,8 @@
 //System control (Only a single background process)
 //
 //Author: Wesley Strong
-//NetID:  wfs51
-//Date:   9/21/16
+//NetID:	wfs51
+//Date:		9/21/16
 //Please not that no code was directly copied from this site however it was used
 //to gain a better understanding as to how a shell functions thus some things may be similar.
 //https://brennan.io/2015/01/16/write-a-shell-in-c/
@@ -28,13 +28,13 @@
 #include <stdbool.h>
 //Thanks Andrejs Cainikovs for the color stuff
 //SRC: http://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_RED		 "\x1b[31m"
+#define ANSI_COLOR_GREEN	 "\x1b[32m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_BLUE		 "\x1b[34m"
 #define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
+#define ANSI_COLOR_CYAN		 "\x1b[36m"
+#define ANSI_COLOR_RESET	 "\x1b[0m"
 
 //List of built in shell commands.
 char *builtin[] = {"cd","exit"};
@@ -286,6 +286,8 @@ char **alias(char **args)
 	}
 }
 
+
+
 //Inserts new alias into the file
 void alias_insert(char **args)
 {
@@ -314,11 +316,11 @@ char **build_args(char **args, char line[81])
 	token = strtok(line, separator);
 
 	i = 0;
-	args[i++] = token;  //build command array
+	args[i++] = token;	//build command array
 	while (token != NULL) //walk through other tokens
 	{
 		token = strtok(NULL, separator);
-		args[i++] = token;   //and build command array
+		args[i++] = token;	 //and build command array
 	}
 	args[i] = (char *) NULL;
 	return args;
@@ -329,13 +331,13 @@ void print_env(char **envp)
 {
 	char** env;
 
-	  for (env = envp; *env != 0; env++)
-	  {
-		      char* thisEnv = *env;
-		          printf("%s\n", thisEnv);
+		for (env = envp; *env != 0; env++)
+		{
+					char* thisEnv = *env;
+							printf("%s\n", thisEnv);
 
-	  }
-	    return;
+		}
+	return;
 }
 
 //This was an attempt to try and implement job processing... 
@@ -401,7 +403,7 @@ char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], cha
 			args[i] = NULL;
 			output[1] = malloc(sizeof(args[i+ 1]));
 			strcpy(output[1], args[i + 1]);
-			builtin_flags[1] =  true;
+			builtin_flags[1] =	true;
 		}
 		else if(strcmp(args[i], "<") == 0)
 		{
@@ -465,6 +467,18 @@ char **harambe_builtin(char **args, int *not_builtin, bool builtin_flags[4], cha
 	}
 
 	return args;
+
+}
+
+
+void out_pipe(char ***pipe_cmds)
+{
+
+}
+
+
+void in_pipe(char ***pipe_cmds)
+{
 
 }
 
@@ -626,51 +640,51 @@ void harambe_fork(char **args, int *not_builtin, bool builtin_flags[5], char lin
 //Builds the prompt whenever called
 char *harambe_build_prompt()
 {
-    char *cwd;
-    size_t sizex;
-    char *user = getenv("USER");
-    char hostname[50];
-    char *prompt;
+	char *cwd;
+	size_t sizex;
+	char *user = getenv("USER");
+	char hostname[50];
+	char *prompt;
 
-    cwd = malloc(500);
-    cwd = getcwd(cwd, 500);
+	cwd = malloc(500);
+	cwd = getcwd(cwd, 500);
 
-    //find last / and remove it
-    cwd = 1 + strrchr(cwd,'/');
+	//find last / and remove it
+	cwd = 1 + strrchr(cwd,'/');
 
-    //allocate memory for prompt
-    sizex = sizeof(user) + sizeof(cwd) + sizeof(hostname) + 4;
-    prompt = (char *) malloc(10*sizex);
+	//allocate memory for prompt
+	sizex = sizeof(user) + sizeof(cwd) + sizeof(hostname) + 4;
+	prompt = (char *) malloc(10*sizex);
 
-    //Some basic error checking
-    if (gethostname(hostname, sizeof(hostname)) == -1)
-    {
-        fprintf(stderr, "%s\n", "Harambe could not find hostname!");
-    }
-    if (cwd == NULL)
-    {
-        fprintf(stderr, "%s\n", "Harambe does not know what to do with directory!");
-    }
-    if(user == NULL)
-    {
-        fprintf(stderr, "%s\n", "Harambe does not know who is using this computer!");
-    }
+	//Some basic error checking
+	if (gethostname(hostname, sizeof(hostname)) == -1)
+	{
+		fprintf(stderr, "%s\n", "Harambe could not find hostname!");
+	}
+	if (cwd == NULL)
+	{
+		fprintf(stderr, "%s\n", "Harambe does not know what to do with directory!");
+	}
+	if(user == NULL)
+	{
+		fprintf(stderr, "%s\n", "Harambe does not know who is using this computer!");
+	}
 
-    //Build prompt
-    strcat(prompt, ANSI_COLOR_BLUE);
-    strcat(prompt, user);
-    strcat(prompt, ANSI_COLOR_RESET);
-    strcat(prompt, "@");
-    strcat(prompt, ANSI_COLOR_RED);
-    strcat(prompt, hostname);
-    strcat(prompt, ANSI_COLOR_RESET);
-    strcat(prompt, " ");
-    strcat(prompt, ANSI_COLOR_MAGENTA);
-    strcat(prompt, cwd);
-    strcat(prompt, "% ");
-    strcat(prompt, ANSI_COLOR_RESET);
+	//Build prompt
+	strcat(prompt, ANSI_COLOR_BLUE);
+	strcat(prompt, user);
+	strcat(prompt, ANSI_COLOR_RESET);
+	strcat(prompt, "@");
+	strcat(prompt, ANSI_COLOR_RED);
+	strcat(prompt, hostname);
+	strcat(prompt, ANSI_COLOR_RESET);
+	strcat(prompt, " ");
+	strcat(prompt, ANSI_COLOR_MAGENTA);
+	strcat(prompt, cwd);
+	strcat(prompt, "% ");
+	strcat(prompt, ANSI_COLOR_RESET);
 
-    return prompt;
+	return prompt;
 }
 
 //ctrl + c signal function
@@ -722,7 +736,7 @@ void pause_process()
 void command_his_store(int *count, char *line, char **command_his)
 {
 	if(*count == 0) {
-		for (int k = 9; k > 0; k--){   
+		for (int k = 9; k > 0; k--){	 
 			command_his[k]=command_his[k-1];
 		}	
 		command_his[0] = malloc(sizeof(line));
@@ -758,9 +772,9 @@ int main(int argc, char **argv, char** envp)
 	//Store alias to hash from file.
 	store_hash();
 	//Build prompt
-    	prompt = harambe_build_prompt();
+			prompt = harambe_build_prompt();
 
-    	//max 80 tokens in line
+			//max 80 tokens in line
 	args = (char **) malloc(80*sizeof(char *));
 	output = (char **) malloc(80*sizeof(char *));
 	command_his = (char **) malloc(81*sizeof(char *));
@@ -783,7 +797,7 @@ int main(int argc, char **argv, char** envp)
 
 		//Print prompt after everything has finished as will as rebuild in case directory was changed.
 		prompt = harambe_build_prompt();
-        fprintf(stderr, "%s", prompt);
+				fprintf(stderr, "%s", prompt);
 	}
 	//Delete hash cleaning up :)
 	hdestroy();
